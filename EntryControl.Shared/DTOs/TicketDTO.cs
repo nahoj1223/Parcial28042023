@@ -1,11 +1,5 @@
 ﻿using EntryControl.Shared.Enums;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace EntryControl.Shared.DTOs
 {
@@ -20,13 +14,14 @@ namespace EntryControl.Shared.DTOs
         [DisplayFormat(DataFormatString = "{0:yyyy/MM/dd hh:mm tt}")]
         [Display(Name = "Fecha de Uso")]
         [Required(ErrorMessage = "El campo {0} es obligatorio.")]
-        public DateTime UseDate { get; set; }
+        public DateTime UseDate { get; set; } = DateTime.Now;
 
         [Display(Name = "Fue Usada")]
-        public bool WasUsed { get; set; }
+        public bool WasUsed { get; set; } = false;
 
-        [Display(Name = "Entrada")]
-        [Range(1, int.MaxValue, ErrorMessage = "Debes seleccionar una {0}.")]
+        [Display(Name = "Porteria")]
+        [Range(1, int.MaxValue, ErrorMessage = "Debe seleccionar una porteria")]
         public EntranceType EntranceType { get; set; }
+
     }
 }

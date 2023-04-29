@@ -1,0 +1,145 @@
+﻿@page "/"
+@inject IRepository repository
+@inject SweetAlertService sweetAlertService
+@inject NavigationManager navigationManager
+
+<div class="row">
+    <div class="col-md-4  offset-md-4">
+
+        <div class="card">
+            <EditForm Model="idTicketDTO" OnValidSubmit="ValidateTicketAsync">
+                <DataAnnotationsValidator />
+                <div class="card-header justify-content-center d-flex align-items-center">
+                    <span>
+                        <i class="oi oi-command" /> Control de Boletas
+                    </span>
+                    <button class="btn btn-sm btn-primary ms-auto" type="submit" disabled="@enabler">
+                        <i class="oi oi-eye" /> Validar Boleta
+                    </button>
+                </div>
+                <div class="card-body">
+
+                    <div class="mb-3">
+                        <label>Id Boleta:</label>
+                        <div>
+                            <InputText class="form-control" @bind-Value="@idTicketDTO.IdTicket" disabled="@enabler" />
+                            <ValidationMessage For="@(() => idTicketDTO.IdTicket)" />
+                        </div>
+                    </div>
+
+                </div>
+            </EditForm>
+            @if (ticket is not null)
+            {
+                <div class="card-footer">
+                    <EditForm Model="ticketDTO" OnValidSubmit="AprobeUseTicketAsync">
+                        <DataAnnotationsValidator />
+                        @if (!ticket.WasUsed)
+                        {
+                            <div class="mb-3">
+                                <select class="form-select" @bind="ticketDTO.EntranceType">
+                                    <option value="0">-- Seleccione una porteria --</option>
+                                    @foreach (var entranceType in Enum.GetValues(typeof(EntranceType)))
+                                    {
+                                        <option value=@entranceType>@entranceType.ToString()</option>
+                                    }
+                                </select>
+                                <ValidationMessage For="@(() => ticketDTO.EntranceType)" />
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label>Fecha:</label>
+                                        <div>
+                                            <InputDate TValue="DateTime" class="form-control" @bind-Value="@ticketDTO.UseDate" />
+                                            <ValidationMessage For="@(() => ticketDTO.UseDate)" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <div>
+                                            <MudTimePicker Label="Hora" AmPm="true" TimeFormat="h:mm tt" @bind-Time="time" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        <div class="d-flex justify-content-center">
+                            <div class="mb-3">
+                                <button class="btn btn-sm btn-success ms-auto" type="submit"><i class="oi oi-check" /> Registrar Uso</button>
+                                <button class="btn btn-sm btn-danger ms-auto" @onclick="Load"><i class="oi oi-x" /> Cancelar</button>
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private TicketDTO ticketDTO = new();
+    private IdTicketDTO idTicketDTO = new();
+    private Ticket? ticket;
+    private TimeSpan? time = DateTime.Now.TimeOfDay;
+    private bool enabler = false;
+
+    private async Task ValidateTicketAsync()
+    {
+
+        var responseHttp = await repository.Get<Ticket>($"/api/ticket/{idTicketDTO.IdTicket}");
+        if (responseHttp.Error)
+        {
+            var message = await responseHttp.GetErrorMessageAsync();
+            await sweetAlertService.FireAsync("Error", message, SweetAlertIcon.Error);
+            return;
+        }
+
+        ticket = responseHttp.Response;
+
+        if (ticket!.WasUsed)
+        {
+            await sweetAlertService.FireAsync("IMPORTANTE:", $"La boleta ya fue usada a las {ticket.UseDate!.Value:hh:mm tt} en la porteria {ticket.EntranceType}", SweetAlertIcon.Info);
+            Load();
+            return;
+        }
+
+        enabler = true;
+    }
+
+    private async Task AprobeUseTicketAsync()
+    {
+
+        ticketDTO.Id = ticket!.Id;
+        ticketDTO.IdTicket = ticket!.IdTicket;
+        ticketDTO.WasUsed = true;
+        ticketDTO.UseDate = new DateTime(ticketDTO.UseDate.Year,
+                                         ticketDTO.UseDate.Month,
+                                         ticketDTO.UseDate.Day,
+                                         time!.Value.Hours,
+                                         time!.Value.Minutes,
+                                         time!.Value.Seconds);
+        
+        var responseHttp = await repository.Put("/api/ticket", ticketDTO);
+        if (responseHttp.Error)
+        {
+            var message = await responseHttp.GetErrorMessageAsync();
+            await sweetAlertService.FireAsync("Error", message, SweetAlertIcon.Error);
+            return;
+        }
+
+        await sweetAlertService.FireAsync("Exito", "USO DE BOLETA REGISTRADO CORRECTAMENTE", SweetAlertIcon.Success);
+        Load();
+    }
+
+    private void Load()
+    {
+        ticketDTO = new();
+        idTicketDTO = new();
+        ticket = null;
+        time = DateTime.Now.TimeOfDay;
+        enabler = false;
+    }
+}

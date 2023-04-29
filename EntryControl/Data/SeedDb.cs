@@ -22,7 +22,7 @@ namespace EntryControl.API.Data
         {
             var count = await _context.Tickets.CountAsync();
 
-            if (count < 10000)
+            if (!_context.Tickets.Any())
             {
                 for (int i = 0; i < 50000; i++)
                 {
